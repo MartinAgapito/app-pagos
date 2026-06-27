@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* ─── Tokens de diseño ───────────────────────────────────────── */
+@theme {
+  /* Superficies */
+  --color-canvas:   #09090f;
+  --color-surface:  #0f0f1a;
+  --color-lift:     #161628;
+  --color-rim:      #1e1e38;
+
+  /* Texto */
+  --color-ink:      #e8e8f2;
+  --color-dim:      #5a5a7a;
+  --color-ghost:    #2a2a45;
+
+  /* Semánticos */
+  --color-positive: #00e5a0;
+  --color-negative: #ff3d71;
+  --color-savings:  #5c7cfa;
+  --color-warning:  #f0b429;
+
+  /* Tipografía */
+  --font-display: "Syne", sans-serif;
+  --font-body:    "DM Sans", sans-serif;
+  --font-mono:    "JetBrains Mono", monospace;
+}
+
+/* ─── Base ───────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  color-scheme: dark;
+  background-color: #09090f;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: #09090f;
+  color: #e8e8f2;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  /* Patrón de puntos sutil — da profundidad sin distraer */
+  background-image: radial-gradient(circle, rgba(255,255,255,0.022) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-attachment: fixed;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+/* ─── Safe area para iPhone (notch / home bar) ───────────────── */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@utility pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+}
+
+/* ─── Animación de entrada para listas ───────────────────────── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.slide-up {
+  animation: slideUp 0.25s ease forwards;
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease forwards;
+}
+
+/* Delays escalonados para listas */
+.delay-1 { animation-delay: 0.05s; opacity: 0; }
+.delay-2 { animation-delay: 0.10s; opacity: 0; }
+.delay-3 { animation-delay: 0.15s; opacity: 0; }
+.delay-4 { animation-delay: 0.20s; opacity: 0; }
+
+/* ─── Scroll nativo fluido ───────────────────────────────────── */
+.scroll-container {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ─── Input base oscuro ──────────────────────────────────────── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

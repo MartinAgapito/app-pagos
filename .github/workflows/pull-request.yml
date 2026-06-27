@@ -1,0 +1,43 @@
+name: Verificacion de Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "vite.config.*"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  build:
+    name: Verificar que el build compila correctamente
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build de verificacion
+        run: npm run build
+
+      - name: Verificar artefacto de build
+        run: |
+          ls -lh dist/
+          ls -lh dist/assets/ 2>/dev/null || echo "(sin carpeta assets)"
+          echo "Tamanio total: $(du -sh dist/ | cut -f1)"
