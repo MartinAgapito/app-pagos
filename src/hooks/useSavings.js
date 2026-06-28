@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
-import { STORAGE_KEYS } from '../utils/constants'
+import { STORAGE_KEYS, INITIAL_SAVINGS } from '../utils/constants'
 import { readStorage, writeStorage } from '../utils/storage'
 import { generateId } from '../utils/formatters'
 
 // Gestiona metas de ahorro con historial de aportes, persistido en localStorage
 export function useSavings() {
-  const [savings, setSavings] = useState(() => readStorage(STORAGE_KEYS.SAVINGS, []))
+  const [savings, setSavings] = useState(() => {
+    const stored = readStorage(STORAGE_KEYS.SAVINGS, null)
+    if (stored === null || stored.length === 0) return INITIAL_SAVINGS
+    const missing = INITIAL_SAVINGS.filter(
+      init => !stored.some(s => s.name === init.name)
+    )
+    return missing.length > 0 ? [...stored, ...missing] : stored
+  })
 
   useEffect(() => { writeStorage(STORAGE_KEYS.SAVINGS, savings) }, [savings])
 

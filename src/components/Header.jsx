@@ -4,7 +4,7 @@ export function Header({ title, subtitle, action }) {
     <header
       className="sticky top-0 z-40 border-b border-rim"
       style={{
-        backgroundColor: 'rgba(9, 9, 15, 0.92)',
+        backgroundColor: 'var(--header-bg)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
       }}

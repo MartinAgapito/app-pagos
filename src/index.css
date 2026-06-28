@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ─── Tokens de diseño ───────────────────────────────────────── */
+/* ─── Tokens de diseño (tema oscuro por defecto) ─────────────── */
 @theme {
   /* Superficies */
   --color-canvas:   #09090f;
@@ -25,6 +25,30 @@
   --font-mono:    "JetBrains Mono", monospace;
 }
 
+/* ─── Tema claro ──────────────────────────────────────────────── */
+/* Fuera de @layer → mayor prioridad que los tokens de Tailwind   */
+[data-theme="light"] {
+  --color-canvas:   #f5f5f5;
+  --color-surface:  #ffffff;
+  --color-lift:     #f0f0f0;
+  --color-rim:      #e0e0e0;
+  --color-ink:      #111111;
+  --color-dim:      #555555;
+  --color-ghost:    #aaaaaa;
+  --color-positive: #00a870;
+  --color-negative: #d0021b;
+  --color-savings:  #3b5bdb;
+  --color-warning:  #d97706;
+}
+
+/* ─── Variable para el fondo translúcido del Header ──────────── */
+:root {
+  --header-bg: rgba(9, 9, 15, 0.92);
+}
+[data-theme="light"] {
+  --header-bg: rgba(245, 245, 245, 0.92);
+}
+
 /* ─── Base ───────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -33,19 +57,28 @@
 
 html {
   color-scheme: dark;
-  background-color: #09090f;
+  background-color: var(--color-canvas);
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
 }
 
 body {
   font-family: var(--font-body);
-  background-color: #09090f;
-  color: #e8e8f2;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
-  /* Patrón de puntos sutil — da profundidad sin distraer */
+  /* Patrón de puntos para tema oscuro */
   background-image: radial-gradient(circle, rgba(255,255,255,0.022) 1px, transparent 1px);
   background-size: 28px 28px;
   background-attachment: fixed;
+}
+
+/* Patrón de puntos más suave para tema claro */
+[data-theme="light"] body {
+  background-image: radial-gradient(circle, rgba(0,0,0,0.045) 1px, transparent 1px);
 }
 
 #root {
@@ -92,7 +125,7 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* ─── Input base oscuro ──────────────────────────────────────── */
+/* ─── Input base — oculta flechas numéricas ──────────────────── */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;

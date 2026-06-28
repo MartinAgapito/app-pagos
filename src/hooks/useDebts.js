@@ -1,58 +1,87 @@
 import { useState, useEffect, useCallback } from 'react'
-import { STORAGE_KEYS } from '../utils/constants'
+import { STORAGE_KEYS, INITIAL_DEBTS } from '../utils/constants'
 import { readStorage, writeStorage } from '../utils/storage'
 import { generateId } from '../utils/formatters'
 
-// Gestiona deudas con historial de abonos, persistido en localStorage
 export function useDebts() {
-  const [debts, setDebts] = useState(() => readStorage(STORAGE_KEYS.DEBTS, []))
+  const [debts, setDebts] = useState(() => {
+    const stored = readStorage(STORAGE_KEYS.DEBTS, null)
+    if (stored === null) return INITIAL_DEBTS
+    // Eliminar entradas que ya no pertenecen a préstamos
+    const filtered = stored.filter(s =>
+      !(s.name === 'Tarjeta'          && s.bank === 'Scotiabank') &&
+      !(s.name === 'Préstamo Personal' && s.bank === 'Scotiabank')
+    )
+    // Actualizar solo campos de referencia — NO tocar remainingBalance ni paidCuotas
+    // (esos los gestiona applyDebtPayment al registrar pagos)
+    const updated = filtered.map(s => {
+      const init = INITIAL_DEBTS.find(i => i.name === s.name && i.bank === s.bank)
+      if (!init) return s
+      return {
+        ...s,
+        tea:            init.tea,
+        totalCuotas:    init.totalCuotas,
+        originalAmount: init.originalAmount,
+        monthlyPayment: init.monthlyPayment,
+        monthlyCharges: init.monthlyCharges,
+        dueDay:         init.dueDay,
+        startDate:      init.startDate,
+      }
+    })
+    // Agregar deudas iniciales que falten
+    const missing = INITIAL_DEBTS.filter(
+      init => !updated.some(s => s.name === init.name && s.bank === init.bank)
+    )
+    return missing.length > 0 ? [...updated, ...missing] : updated
+  })
 
   useEffect(() => { writeStorage(STORAGE_KEYS.DEBTS, debts) }, [debts])
 
-  // Registra una nueva deuda con saldo inicial igual al total
   const addDebt = useCallback((data) => {
-    const totalAmount = Number(data.totalAmount)
+    const totalDebt = Number(data.totalDebt)
     setDebts(prev => [
       ...prev,
       {
         id:               generateId(),
-        creditor:         data.creditor.trim(),
-        totalAmount,
-        remainingBalance: totalAmount,
-        payments:         [],
+        name:             data.name.trim(),
+        bank:             data.bank?.trim() || '',
+        totalDebt,
+        monthlyPayment:   Number(data.monthlyPayment) || 0,
+        remainingBalance: totalDebt,
         createdAt:        new Date().toISOString(),
       },
     ])
   }, [])
 
-  // Registra un abono a una deuda, reduciendo su saldo pendiente
-  const addPaymentToDebt = useCallback((debtId, data) => {
-    const amount = Number(data.amount)
-    setDebts(prev => prev.map(d => {
-      if (d.id !== debtId) return d
-      return {
-        ...d,
-        remainingBalance: Math.max(0, d.remainingBalance - amount),
-        payments: [
-          ...d.payments,
-          {
-            id:    generateId(),
-            amount,
-            date:  new Date().toISOString(),
-            notes: data.notes?.trim() || '',
-          },
-        ],
-      }
-    }))
-  }, [])
-
-  // Elimina una deuda por ID
   const deleteDebt = useCallback((id) => {
     setDebts(prev => prev.filter(d => d.id !== id))
   }, [])
 
-  // Total de saldo pendiente en todas las deudas
+  const applyDebtPayment = useCallback((name, bank, amount, undo = false) => {
+    setDebts(prev => prev.map(d => {
+      if (d.name !== name || d.bank !== bank) return d
+      // Amortización francesa: solo baja al capital, no el total de la cuota
+      const tem      = Math.pow(1 + (d.tea || 0) / 100, 1 / 12) - 1
+      const charges  = d.monthlyCharges || 0
+      let newBalance
+      if (undo) {
+        newBalance = tem > 0
+          ? (d.remainingBalance + amount) / (1 + tem)
+          : d.remainingBalance + amount
+      } else {
+        const interest = d.remainingBalance * tem
+        const capital  = amount - interest - charges
+        newBalance = Math.max(0, d.remainingBalance - capital)
+      }
+      return {
+        ...d,
+        remainingBalance: newBalance,
+        paidCuotas: Math.max(0, (d.paidCuotas || 0) + (undo ? -1 : 1)),
+      }
+    }))
+  }, [])
+
   const totalDeuda = debts.reduce((s, d) => s + d.remainingBalance, 0)
 
-  return { debts, totalDeuda, addDebt, addPaymentToDebt, deleteDebt }
+  return { debts, totalDeuda, addDebt, deleteDebt, applyDebtPayment }
 }
