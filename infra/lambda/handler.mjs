@@ -25,7 +25,7 @@ export const handler = async (event) => {
         TableName: TABLE,
         Key: marshall({ pk: PK, sk: type }),
       }))
-      if (!Item) return { statusCode: 404, headers: HEADERS, body: 'null' }
+      if (!Item) return { statusCode: 200, headers: HEADERS, body: 'null' }
       const { payload } = unmarshall(Item)
       return { statusCode: 200, headers: HEADERS, body: payload }
     }
