@@ -1,53 +1,59 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { STORAGE_KEYS, INITIAL_DEBTS } from '../utils/constants'
-import { readStorage, writeStorage } from '../utils/storage'
+import { readStorage } from '../utils/storage'
 import { generateId } from '../utils/formatters'
 import { fetchData, saveData } from '../utils/api'
 
-export function useDebts() {
-  const [debts, setDebts] = useState(() => {
-    const stored = readStorage(STORAGE_KEYS.DEBTS, null)
-    if (stored === null) return INITIAL_DEBTS
-    const filtered = stored.filter(s =>
-      !(s.name === 'Tarjeta'           && s.bank === 'Scotiabank') &&
-      !(s.name === 'Préstamo Personal' && s.bank === 'Scotiabank')
-    )
-    const updated = filtered.map(s => {
-      const init = INITIAL_DEBTS.find(i => i.name === s.name && i.bank === s.bank)
-      if (!init) return s
-      return {
-        ...s,
-        tea:            init.tea,
-        totalCuotas:    init.totalCuotas,
-        originalAmount: init.originalAmount,
-        monthlyPayment: init.monthlyPayment,
-        monthlyCharges: init.monthlyCharges,
-        balanceIsTotal: init.balanceIsTotal,
-        dueDay:         init.dueDay,
-        startDate:      init.startDate,
-      }
-    })
-    const missing = INITIAL_DEBTS.filter(
-      init => !updated.some(s => s.name === init.name && s.bank === init.bank)
-    )
-    return missing.length > 0 ? [...updated, ...missing] : updated
-  })
+async function loadDebts() {
+  const api = await fetchData('debts')
+  if (api !== null) return api
+  const local = readStorage(STORAGE_KEYS.DEBTS, null)
+  if (local !== null) { saveData('debts', local); return local }
+  return INITIAL_DEBTS
+}
 
-  const syncReadyRef = useRef(false)
+function migrateDebts(stored) {
+  const filtered = stored.filter(s =>
+    !(s.name === 'Tarjeta'           && s.bank === 'Scotiabank') &&
+    !(s.name === 'Préstamo Personal' && s.bank === 'Scotiabank')
+  )
+  const updated = filtered.map(s => {
+    const init = INITIAL_DEBTS.find(i => i.name === s.name && i.bank === s.bank)
+    if (!init) return s
+    return {
+      ...s,
+      tea:            init.tea,
+      totalCuotas:    init.totalCuotas,
+      originalAmount: init.originalAmount,
+      monthlyPayment: init.monthlyPayment,
+      monthlyCharges: init.monthlyCharges,
+      balanceIsTotal: init.balanceIsTotal,
+      dueDay:         init.dueDay,
+      startDate:      init.startDate,
+    }
+  })
+  const missing = INITIAL_DEBTS.filter(
+    init => !updated.some(s => s.name === init.name && s.bank === init.bank)
+  )
+  return missing.length > 0 ? [...updated, ...missing] : updated
+}
+
+export function useDebts() {
+  const [debts,    setDebts]    = useState([])
+  const [isLoaded, setIsLoaded] = useState(false)
+  const readyRef = useRef(false)
 
   useEffect(() => {
-    fetchData('debts').then(apiDebts => {
-      if (apiDebts !== null) {
-        setDebts(apiDebts)
-        writeStorage(STORAGE_KEYS.DEBTS, apiDebts)
-      }
-      syncReadyRef.current = true
+    loadDebts().then(data => {
+      setDebts(migrateDebts(data))
+      readyRef.current = true
+      setIsLoaded(true)
     })
   }, [])
 
   useEffect(() => {
-    writeStorage(STORAGE_KEYS.DEBTS, debts)
-    if (syncReadyRef.current) saveData('debts', debts)
+    if (!readyRef.current) return
+    saveData('debts', debts)
   }, [debts])
 
   const addDebt = useCallback((data) => {
@@ -78,8 +84,6 @@ export function useDebts() {
       let newBalance
 
       if (d.balanceIsTotal && tem > 0) {
-        // Antes de pagar: balance = Deuda total (capital + interés período + seguro)
-        // Después de pagar: balance = Deuda capital puro (sin interés siguiente período)
         if (undo) {
           newBalance = d.remainingBalance + amount
         } else {
@@ -89,7 +93,6 @@ export function useDebts() {
           newBalance = Math.max(0, deudaCapital - capitalPaid)
         }
       } else {
-        // Balance = capital puro (BCP, Interbank)
         if (undo) {
           newBalance = tem > 0
             ? (d.remainingBalance + amount - charges) / (1 + tem)
@@ -111,5 +114,5 @@ export function useDebts() {
 
   const totalDeuda = debts.reduce((s, d) => s + d.remainingBalance, 0)
 
-  return { debts, totalDeuda, addDebt, deleteDebt, applyDebtPayment }
+  return { debts, totalDeuda, isLoaded, addDebt, deleteDebt, applyDebtPayment }
 }

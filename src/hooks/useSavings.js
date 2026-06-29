@@ -1,34 +1,36 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { STORAGE_KEYS, INITIAL_SAVINGS } from '../utils/constants'
-import { readStorage, writeStorage } from '../utils/storage'
+import { readStorage } from '../utils/storage'
 import { generateId } from '../utils/formatters'
 import { fetchData, saveData } from '../utils/api'
 
-export function useSavings() {
-  const [savings, setSavings] = useState(() => {
-    const stored = readStorage(STORAGE_KEYS.SAVINGS, null)
-    if (stored === null || stored.length === 0) return INITIAL_SAVINGS
-    const missing = INITIAL_SAVINGS.filter(
-      init => !stored.some(s => s.name === init.name)
-    )
-    return missing.length > 0 ? [...stored, ...missing] : stored
-  })
+async function loadSavings() {
+  const api = await fetchData('savings')
+  if (api !== null) return api
+  const local = readStorage(STORAGE_KEYS.SAVINGS, null)
+  if (local !== null) { saveData('savings', local); return local }
+  return INITIAL_SAVINGS
+}
 
-  const syncReadyRef = useRef(false)
+export function useSavings() {
+  const [savings,  setSavings]  = useState([])
+  const [isLoaded, setIsLoaded] = useState(false)
+  const readyRef = useRef(false)
 
   useEffect(() => {
-    fetchData('savings').then(apiSavings => {
-      if (apiSavings !== null) {
-        setSavings(apiSavings)
-        writeStorage(STORAGE_KEYS.SAVINGS, apiSavings)
-      }
-      syncReadyRef.current = true
+    loadSavings().then(data => {
+      const missing = INITIAL_SAVINGS.filter(
+        init => !data.some(s => s.name === init.name)
+      )
+      setSavings(missing.length > 0 ? [...data, ...missing] : data)
+      readyRef.current = true
+      setIsLoaded(true)
     })
   }, [])
 
   useEffect(() => {
-    writeStorage(STORAGE_KEYS.SAVINGS, savings)
-    if (syncReadyRef.current) saveData('savings', savings)
+    if (!readyRef.current) return
+    saveData('savings', savings)
   }, [savings])
 
   const addSavingGoal = useCallback((data) => {
@@ -54,12 +56,7 @@ export function useSavings() {
         currentAmount: g.currentAmount + amount,
         contributions: [
           ...g.contributions,
-          {
-            id:    generateId(),
-            amount,
-            date:  new Date().toISOString(),
-            notes: data.notes?.trim() || '',
-          },
+          { id: generateId(), amount, date: new Date().toISOString(), notes: data.notes?.trim() || '' },
         ],
       }
     }))
@@ -71,5 +68,5 @@ export function useSavings() {
 
   const totalAhorrado = savings.reduce((s, g) => s + g.currentAmount, 0)
 
-  return { savings, totalAhorrado, addSavingGoal, addContribution, deleteSavingGoal }
+  return { savings, totalAhorrado, isLoaded, addSavingGoal, addContribution, deleteSavingGoal }
 }

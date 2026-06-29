@@ -37,11 +37,15 @@ export function AppProvider({ children }) {
     }
   }
 
+  const isLoading = !paymentsData.isLoaded || !debtsData.isLoaded ||
+                    !savingsData.isLoaded  || !cardsData.isLoaded
+
   return (
     <AppContext.Provider
       value={{
         activeTab,
         setActiveTab,
+        isLoading,
         ...paymentsData,
         ...debtsData,
         ...savingsData,

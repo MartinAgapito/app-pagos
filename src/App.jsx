@@ -9,8 +9,21 @@ import { Savings }     from './pages/Savings'
 import { Movements }   from './pages/Movements'
 import { TABS }        from './utils/constants'
 
+function LoadingScreen() {
+  return (
+    <div className="min-h-dvh flex flex-col items-center justify-center gap-4"
+      style={{ backgroundColor: 'var(--color-canvas)' }}>
+      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+        style={{ borderColor: 'var(--color-positive)', borderTopColor: 'transparent' }} />
+      <p className="text-sm text-dim">Cargando datos...</p>
+    </div>
+  )
+}
+
 function AppContent({ onLogout }) {
-  const { activeTab } = useAppContext()
+  const { activeTab, isLoading } = useAppContext()
+
+  if (isLoading) return <LoadingScreen />
 
   return (
     <div className="min-h-dvh" style={{ backgroundColor: 'var(--color-canvas)' }}>

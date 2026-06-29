@@ -1,34 +1,36 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { STORAGE_KEYS, INITIAL_CARDS } from '../utils/constants'
-import { readStorage, writeStorage } from '../utils/storage'
+import { readStorage } from '../utils/storage'
 import { generateId } from '../utils/formatters'
 import { fetchData, saveData } from '../utils/api'
 
-export function useCreditCards() {
-  const [cards, setCards] = useState(() => {
-    const stored = readStorage(STORAGE_KEYS.CARDS, null)
-    if (stored === null) return INITIAL_CARDS
-    const missing = INITIAL_CARDS.filter(
-      init => !stored.some(s => s.name === init.name && s.bank === init.bank)
-    )
-    return missing.length > 0 ? [...stored, ...missing] : stored
-  })
+async function loadCards() {
+  const api = await fetchData('cards')
+  if (api !== null) return api
+  const local = readStorage(STORAGE_KEYS.CARDS, null)
+  if (local !== null) { saveData('cards', local); return local }
+  return INITIAL_CARDS
+}
 
-  const syncReadyRef = useRef(false)
+export function useCreditCards() {
+  const [cards,    setCards]    = useState([])
+  const [isLoaded, setIsLoaded] = useState(false)
+  const readyRef = useRef(false)
 
   useEffect(() => {
-    fetchData('cards').then(apiCards => {
-      if (apiCards !== null) {
-        setCards(apiCards)
-        writeStorage(STORAGE_KEYS.CARDS, apiCards)
-      }
-      syncReadyRef.current = true
+    loadCards().then(data => {
+      const missing = INITIAL_CARDS.filter(
+        init => !data.some(s => s.name === init.name && s.bank === init.bank)
+      )
+      setCards(missing.length > 0 ? [...data, ...missing] : data)
+      readyRef.current = true
+      setIsLoaded(true)
     })
   }, [])
 
   useEffect(() => {
-    writeStorage(STORAGE_KEYS.CARDS, cards)
-    if (syncReadyRef.current) saveData('cards', cards)
+    if (!readyRef.current) return
+    saveData('cards', cards)
   }, [cards])
 
   const addMovement = useCallback((cardId, data) => {
@@ -62,5 +64,5 @@ export function useCreditCards() {
 
   const totalTarjetas = cards.reduce((sum, c) => sum + getCardBalance(c), 0)
 
-  return { cards, addMovement, deleteMovement, getCardBalance, totalTarjetas }
+  return { cards, isLoaded, addMovement, deleteMovement, getCardBalance, totalTarjetas }
 }

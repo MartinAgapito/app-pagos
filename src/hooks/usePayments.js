@@ -1,63 +1,64 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { STORAGE_KEYS, INITIAL_PAYMENTS } from '../utils/constants'
-import { readStorage, writeStorage } from '../utils/storage'
+import { readStorage } from '../utils/storage'
 import { generateId } from '../utils/formatters'
 import { fetchData, saveData } from '../utils/api'
 
+// Si no hay datos en la nube, migra desde localStorage una sola vez
+async function loadPayments() {
+  const api = await fetchData('payments')
+  if (api !== null) return api
+  const local = readStorage(STORAGE_KEYS.PAYMENTS, null)
+  if (local !== null) { saveData('payments', local); return local }
+  return INITIAL_PAYMENTS
+}
+
+async function loadBalance() {
+  const api = await fetchData('balance')
+  if (api !== null) return api
+  const local = readStorage(STORAGE_KEYS.BALANCE, null)
+  if (local !== null) { saveData('balance', local); return local }
+  return 0
+}
+
 export function usePayments() {
-  const [payments, setPayments] = useState(() => {
-    const stored = readStorage(STORAGE_KEYS.PAYMENTS, null)
-    if (stored === null) return INITIAL_PAYMENTS
-    // Renombrar pago antiguo al nombre actual
-    const renamed = stored.map(p =>
-      p.name === 'Préstamo Personal · Scotiabank'
-        ? { ...p, name: 'Extralinea Auto · Scotiabank' }
-        : p
-    )
-    // Inyectar linkedDebt en pagos que deben tenerlo pero no lo tienen aún
-    const enriched = renamed.map(p => {
-      const init = INITIAL_PAYMENTS.find(i => i.name === p.name)
-      if (!init?.linkedDebt) return p
-      if (p.linkedDebt) return p
-      return { ...p, linkedDebt: init.linkedDebt }
-    })
-    // Agrega pagos iniciales que no existan aún
-    const missing = INITIAL_PAYMENTS.filter(
-      init => !enriched.some(s => s.name === init.name)
-    )
-    return missing.length > 0 ? [...enriched, ...missing] : enriched
-  })
-  const [balance, setBalance] = useState(() => readStorage(STORAGE_KEYS.BALANCE, 0))
+  const [payments, setPayments] = useState([])
+  const [balance,  setBalance]  = useState(0)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const readyRef = useRef(false)
 
-  // Ref para no sincronizar a la nube antes de cargar los datos de la nube
-  const syncReadyRef = useRef(false)
-
-  // Carga inicial desde la nube (sobreescribe localStorage si hay datos más recientes)
   useEffect(() => {
-    Promise.all([
-      fetchData('payments'),
-      fetchData('balance'),
-    ]).then(([apiPayments, apiBalance]) => {
-      if (apiPayments !== null) {
-        setPayments(apiPayments)
-        writeStorage(STORAGE_KEYS.PAYMENTS, apiPayments)
-      }
-      if (apiBalance !== null) {
-        setBalance(apiBalance)
-        writeStorage(STORAGE_KEYS.BALANCE, apiBalance)
-      }
-      syncReadyRef.current = true
+    Promise.all([loadPayments(), loadBalance()]).then(([p, b]) => {
+      // Aplicar migraciones igual que antes
+      const renamed = p.map(x =>
+        x.name === 'Préstamo Personal · Scotiabank'
+          ? { ...x, name: 'Extralinea Auto · Scotiabank' }
+          : x
+      )
+      const enriched = renamed.map(x => {
+        const init = INITIAL_PAYMENTS.find(i => i.name === x.name)
+        if (!init?.linkedDebt || x.linkedDebt) return x
+        return { ...x, linkedDebt: init.linkedDebt }
+      })
+      const missing = INITIAL_PAYMENTS.filter(
+        init => !enriched.some(s => s.name === init.name)
+      )
+      const final = missing.length > 0 ? [...enriched, ...missing] : enriched
+      setPayments(final)
+      setBalance(b)
+      readyRef.current = true
+      setIsLoaded(true)
     })
   }, [])
 
   useEffect(() => {
-    writeStorage(STORAGE_KEYS.PAYMENTS, payments)
-    if (syncReadyRef.current) saveData('payments', payments)
+    if (!readyRef.current) return
+    saveData('payments', payments)
   }, [payments])
 
   useEffect(() => {
-    writeStorage(STORAGE_KEYS.BALANCE, balance)
-    if (syncReadyRef.current) saveData('balance', balance)
+    if (!readyRef.current) return
+    saveData('balance', balance)
   }, [balance])
 
   const addPayment = useCallback((data) => {
@@ -105,14 +106,7 @@ export function usePayments() {
   const saldoRestante  = balance - totalPendiente
 
   return {
-    payments,
-    balance,
-    totalPagado,
-    totalPendiente,
-    saldoRestante,
-    addPayment,
-    togglePaid,
-    deletePayment,
-    updateBalance,
+    payments, balance, totalPagado, totalPendiente, saldoRestante, isLoaded,
+    addPayment, togglePaid, deletePayment, updateBalance,
   }
 }
