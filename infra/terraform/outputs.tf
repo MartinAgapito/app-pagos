@@ -34,3 +34,12 @@ output "s3_bucket_arn" {
 output "aws_account_id" {
   value = data.aws_caller_identity.current.account_id
 }
+
+output "api_url" {
+  value       = aws_apigatewayv2_stage.api.invoke_url
+  description = "URL base de la API — usar como VITE_API_URL"
+}
+
+output "dynamodb_table_name" {
+  value = aws_dynamodb_table.data.name
+}

@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { STORAGE_KEYS, INITIAL_SAVINGS } from '../utils/constants'
 import { readStorage, writeStorage } from '../utils/storage'
 import { generateId } from '../utils/formatters'
+import { fetchData, saveData } from '../utils/api'
 
-// Gestiona metas de ahorro con historial de aportes, persistido en localStorage
 export function useSavings() {
   const [savings, setSavings] = useState(() => {
     const stored = readStorage(STORAGE_KEYS.SAVINGS, null)
@@ -14,9 +14,23 @@ export function useSavings() {
     return missing.length > 0 ? [...stored, ...missing] : stored
   })
 
-  useEffect(() => { writeStorage(STORAGE_KEYS.SAVINGS, savings) }, [savings])
+  const syncReadyRef = useRef(false)
 
-  // Crea una nueva meta de ahorro con monto inicial en cero
+  useEffect(() => {
+    fetchData('savings').then(apiSavings => {
+      if (apiSavings !== null) {
+        setSavings(apiSavings)
+        writeStorage(STORAGE_KEYS.SAVINGS, apiSavings)
+      }
+      syncReadyRef.current = true
+    })
+  }, [])
+
+  useEffect(() => {
+    writeStorage(STORAGE_KEYS.SAVINGS, savings)
+    if (syncReadyRef.current) saveData('savings', savings)
+  }, [savings])
+
   const addSavingGoal = useCallback((data) => {
     setSavings(prev => [
       ...prev,
@@ -31,7 +45,6 @@ export function useSavings() {
     ])
   }, [])
 
-  // Registra un aporte a una meta, sumando al monto acumulado
   const addContribution = useCallback((goalId, data) => {
     const amount = Number(data.amount)
     setSavings(prev => prev.map(g => {
@@ -52,12 +65,10 @@ export function useSavings() {
     }))
   }, [])
 
-  // Elimina una meta de ahorro por ID
   const deleteSavingGoal = useCallback((id) => {
     setSavings(prev => prev.filter(g => g.id !== id))
   }, [])
 
-  // Total ahorrado sumando todas las metas
   const totalAhorrado = savings.reduce((s, g) => s + g.currentAmount, 0)
 
   return { savings, totalAhorrado, addSavingGoal, addContribution, deleteSavingGoal }

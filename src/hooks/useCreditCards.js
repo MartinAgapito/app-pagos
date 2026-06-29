@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { STORAGE_KEYS, INITIAL_CARDS } from '../utils/constants'
 import { readStorage, writeStorage } from '../utils/storage'
 import { generateId } from '../utils/formatters'
+import { fetchData, saveData } from '../utils/api'
 
 export function useCreditCards() {
   const [cards, setCards] = useState(() => {
@@ -13,7 +14,22 @@ export function useCreditCards() {
     return missing.length > 0 ? [...stored, ...missing] : stored
   })
 
-  useEffect(() => { writeStorage(STORAGE_KEYS.CARDS, cards) }, [cards])
+  const syncReadyRef = useRef(false)
+
+  useEffect(() => {
+    fetchData('cards').then(apiCards => {
+      if (apiCards !== null) {
+        setCards(apiCards)
+        writeStorage(STORAGE_KEYS.CARDS, apiCards)
+      }
+      syncReadyRef.current = true
+    })
+  }, [])
+
+  useEffect(() => {
+    writeStorage(STORAGE_KEYS.CARDS, cards)
+    if (syncReadyRef.current) saveData('cards', cards)
+  }, [cards])
 
   const addMovement = useCallback((cardId, data) => {
     setCards(prev => prev.map(c => {

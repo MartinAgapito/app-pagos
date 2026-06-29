@@ -34,6 +34,8 @@ jobs:
 
       - name: Build de produccion
         run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - name: Configurar credenciales AWS
         uses: aws-actions/configure-aws-credentials@v4
