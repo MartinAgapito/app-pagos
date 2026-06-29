@@ -105,17 +105,23 @@ export function Home({ onLogout }) {
             className="absolute -top-10 -right-10 w-48 h-48 rounded-full pointer-events-none"
             style={{ background: 'radial-gradient(circle, rgba(0, 229, 160, 0.08) 0%, transparent 70%)', filter: 'blur(24px)' }}
           />
-          <p className="text-xs text-dim uppercase tracking-widest mb-3">Saldo disponible del mes</p>
+          <p className="text-xs text-dim uppercase tracking-widest mb-3">Disponible ahora</p>
 
+          {/* Saldo actual = ingreso − pagado */}
+          <p className="text-4xl font-medium text-ink mb-3" style={{ fontFamily: 'var(--font-mono)' }}>
+            {formatCurrency(balance - totalPagado)}
+          </p>
+
+          {/* Ingreso del mes — editable */}
           {editingBalance ? (
             <div className="flex gap-2 items-center">
-              <span className="text-2xl font-medium text-dim" style={{ fontFamily: 'var(--font-mono)' }}>S/</span>
+              <span className="text-sm font-medium text-dim" style={{ fontFamily: 'var(--font-mono)' }}>Ingreso S/</span>
               <input
                 type="number"
                 value={tempBalance}
                 onChange={e => setTempBalance(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="flex-1 bg-transparent text-3xl font-medium text-ink outline-none"
+                className="flex-1 bg-transparent text-sm font-medium text-ink outline-none"
                 style={{ fontFamily: 'var(--font-mono)' }}
                 autoFocus
                 min="0"
@@ -130,12 +136,12 @@ export function Home({ onLogout }) {
               </button>
             </div>
           ) : (
-            <button onClick={handleEditBalance} className="text-left w-full group">
-              <p className="text-4xl font-medium text-ink" style={{ fontFamily: 'var(--font-mono)' }}>
-                {formatCurrency(balance)}
+            <button onClick={handleEditBalance} className="text-left group flex items-center gap-2">
+              <p className="text-xs text-dim" style={{ fontFamily: 'var(--font-mono)' }}>
+                Ingreso: {formatCurrency(balance)}
               </p>
-              <p className="text-xs mt-2 transition-colors group-hover:text-ink" style={{ color: 'var(--color-positive)' }}>
-                Toca para editar
+              <p className="text-xs transition-colors group-hover:text-ink" style={{ color: 'var(--color-positive)' }}>
+                · Editar
               </p>
             </button>
           )}
