@@ -92,7 +92,7 @@ const mkDebt = (name, bank, originalAmount, remainingBalance, monthlyPayment, te
 
 export const INITIAL_DEBTS = [
   mkDebt('Hipotecario',     'BCP',       183106.80, 153774.29, 1395.18, 8.00, 240, 76, '2020-02-16', 117.35),
-  mkDebt('Extralinea Auto', 'Scotiabank',  94000.00,  68477.58, 2021.31, 9.90,  60, 21, '2024-09-09',   0),
+  mkDebt('Extralinea Auto', 'Scotiabank',  94000.00,  67911.24, 2021.31, 9.90,  60, 21, '2024-09-09',  30),
   mkDebt('Terreno',         'Interbank',   22320.00,  17112.00,  248.00, 0.00,  90, 22, '2024-08-05',   0),
 ]
 
