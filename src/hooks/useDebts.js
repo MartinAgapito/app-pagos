@@ -28,6 +28,8 @@ function migrateDebts(stored) {
       monthlyPayment: init.monthlyPayment,
       monthlyCharges: init.monthlyCharges,
       balanceIsTotal: init.balanceIsTotal,
+      remainingBalance: init.balanceIsTotal ? init.remainingBalance : s.remainingBalance,
+      amountPaid:     s.amountPaid ?? 0,
       dueDay:         init.dueDay,
       startDate:      init.startDate,
     }
@@ -83,25 +85,23 @@ export function useDebts() {
       const charges = d.monthlyCharges || 0
       let newBalance
 
-      if (d.balanceIsTotal && tem > 0) {
-        if (undo) {
-          newBalance = d.remainingBalance + amount
-        } else {
-          const deudaCapital = (d.remainingBalance - charges) / (1 + tem)
-          const interest     = deudaCapital * tem
-          const capitalPaid  = amount - interest - charges
-          newBalance = Math.max(0, deudaCapital - capitalPaid)
+      if (d.balanceIsTotal) {
+        // Monto original y deuda se mantienen fijos; solo acumula lo pagado en cuotas
+        return {
+          ...d,
+          amountPaid: Math.max(0, (d.amountPaid || 0) + (undo ? -amount : amount)),
+          paidCuotas: Math.max(0, (d.paidCuotas || 0) + (undo ? -1 : 1)),
         }
+      }
+
+      if (undo) {
+        newBalance = tem > 0
+          ? (d.remainingBalance + amount - charges) / (1 + tem)
+          : d.remainingBalance + amount
       } else {
-        if (undo) {
-          newBalance = tem > 0
-            ? (d.remainingBalance + amount - charges) / (1 + tem)
-            : d.remainingBalance + amount
-        } else {
-          const interest = d.remainingBalance * tem
-          const capital  = amount - interest - charges
-          newBalance = Math.max(0, d.remainingBalance - capital)
-        }
+        const interest = d.remainingBalance * tem
+        const capital  = amount - interest - charges
+        newBalance = Math.max(0, d.remainingBalance - capital)
       }
 
       return {

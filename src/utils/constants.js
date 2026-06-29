@@ -87,6 +87,7 @@ const mkDebt = (name, bank, originalAmount, remainingBalance, monthlyPayment, te
   startDate:        startDate || null,
   monthlyCharges,
   balanceIsTotal,
+  amountPaid:       0,
   dueDay:           1,
   createdAt:        new Date().toISOString(),
 })

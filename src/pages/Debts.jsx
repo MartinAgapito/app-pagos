@@ -56,12 +56,13 @@ function fmtDate(iso) {
 
 // ─── Tarjeta de préstamo con TEA, cuotas y barra de progreso ─────────────────
 function DebtCard({ debt }) {
-  const hasCuotas = debt.totalCuotas > 0 && debt.paidCuotas !== undefined
-  const isSettled = debt.remainingBalance === 0
+  const hasCuotas  = debt.totalCuotas > 0 && debt.paidCuotas !== undefined
+  const isSettled  = debt.remainingBalance === 0
+  const isFixed    = debt.balanceIsTotal   // Scotiabank: deuda fija, se acumula lo pagado
 
   return (
     <div className="rounded-2xl border border-rim p-4" style={{ backgroundColor: 'var(--color-surface)' }}>
-      {/* Encabezado: nombre + banco + chips */}
+      {/* Encabezado */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0 mr-3">
           <p className="font-semibold text-ink">{debt.name}</p>
@@ -79,7 +80,7 @@ function DebtCard({ debt }) {
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-xs text-dim mb-0.5">Pendiente</p>
+          <p className="text-xs text-dim mb-0.5">{isFixed ? 'Deuda' : 'Pendiente'}</p>
           <p
             className="text-lg font-medium"
             style={{ fontFamily: 'var(--font-mono)', color: isSettled ? 'var(--color-positive)' : 'var(--color-negative)' }}
@@ -89,26 +90,38 @@ function DebtCard({ debt }) {
         </div>
       </div>
 
-      {/* Fila: monto original · cuota mensual · fecha */}
-      <div className="flex items-center justify-between mb-3 py-2 border-t border-rim">
-        <div>
-          <p className="text-xs text-dim">Monto original</p>
-          <p className="text-sm font-medium text-ink" style={{ fontFamily: 'var(--font-mono)' }}>
-            {formatCurrency(debt.originalAmount ?? debt.totalDebt)}
-          </p>
-        </div>
-        {debt.monthlyPayment > 0 && (
-          <div className="text-center">
-            <p className="text-xs text-dim">Cuota/mes</p>
+      {/* Fila de montos */}
+      <div className="py-2 border-t border-rim mb-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-dim">Monto original</p>
             <p className="text-sm font-medium text-ink" style={{ fontFamily: 'var(--font-mono)' }}>
-              {formatCurrency(debt.monthlyPayment)}
+              {formatCurrency(debt.originalAmount ?? debt.totalDebt)}
             </p>
           </div>
-        )}
-        {debt.startDate && (
-          <div className="text-right">
-            <p className="text-xs text-dim">Adquisición</p>
-            <p className="text-sm text-ink">{fmtDate(debt.startDate)}</p>
+          {debt.monthlyPayment > 0 && (
+            <div className="text-center">
+              <p className="text-xs text-dim">Cuota/mes</p>
+              <p className="text-sm font-medium text-ink" style={{ fontFamily: 'var(--font-mono)' }}>
+                {formatCurrency(debt.monthlyPayment)}
+              </p>
+            </div>
+          )}
+          {debt.startDate && (
+            <div className="text-right">
+              <p className="text-xs text-dim">Adquisición</p>
+              <p className="text-sm text-ink">{fmtDate(debt.startDate)}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Total pagado en cuotas — solo deudas con deuda fija */}
+        {isFixed && (
+          <div className="flex items-center justify-between pt-1 border-t border-rim">
+            <p className="text-xs text-dim">Total pagado en cuotas</p>
+            <p className="text-sm font-semibold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-positive)' }}>
+              {formatCurrency(debt.amountPaid ?? 0)}
+            </p>
           </div>
         )}
       </div>
